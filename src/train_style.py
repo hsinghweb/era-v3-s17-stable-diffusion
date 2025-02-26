@@ -9,6 +9,7 @@ from transformers import CLIPTextModel, CLIPTokenizer
 from diffusers.optimization import get_scheduler
 from PIL import Image
 import numpy as np
+import glob
 
 def train_style(
     style_name,
