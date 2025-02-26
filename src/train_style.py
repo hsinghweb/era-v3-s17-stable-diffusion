@@ -103,8 +103,18 @@ def train_batch(text_encoder, images, placeholder_token, tokenizer):
     # Calculate contrastive loss
     # Push positive embeddings closer to image features while pushing negative embeddings away
     image_features = images.mean(dim=[2, 3])  # Average pool spatial dimensions
-    image_features = image_features / image_features.norm(dim=-1, keepdim=True)  # Normalize
     
+    # Project image features to match text embedding dimension
+    embedding_dim = pos_embeddings.shape[-1]  # Should be 768
+    if not hasattr(text_encoder, 'image_projection'):
+        text_encoder.image_projection = torch.nn.Linear(image_features.shape[-1], embedding_dim)
+        text_encoder.image_projection.to(image_features.device)
+    
+    # Project and normalize image features
+    image_features = text_encoder.image_projection(image_features)
+    image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+    
+    # Normalize text embeddings
     pos_embeddings = pos_embeddings / pos_embeddings.norm(dim=-1, keepdim=True)
     neg_embeddings = neg_embeddings / neg_embeddings.norm(dim=-1, keepdim=True)
     
