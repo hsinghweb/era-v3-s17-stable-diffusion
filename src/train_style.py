@@ -75,20 +75,52 @@ def train_style(
     print(f"Saved style embedding to {output_path}")
 
 def train_batch(text_encoder, images, placeholder_token, tokenizer):
-    # Implement your training logic here
-    # This is a simplified version - you'll need to adapt this based on your needs
-    text_input = tokenizer(
-        [f"a photo in {placeholder_token} style"] * len(images),
+    # Create positive and negative prompts
+    positive_prompt = f"a photo in {placeholder_token} style"
+    negative_prompt = "low quality, blurry, distorted"
+    
+    # Tokenize both prompts
+    pos_input = tokenizer(
+        [positive_prompt] * len(images),
         padding="max_length",
         max_length=tokenizer.model_max_length,
         truncation=True,
         return_tensors="pt"
     )
     
-    encoder_hidden_states = text_encoder(text_input.input_ids)[0]
-    # Add your loss computation here
-    loss = torch.mean((encoder_hidden_states - images.mean()) ** 2)
-    return loss
+    neg_input = tokenizer(
+        [negative_prompt] * len(images),
+        padding="max_length",
+        max_length=tokenizer.model_max_length,
+        truncation=True,
+        return_tensors="pt"
+    )
+    
+    # Get embeddings for both prompts
+    pos_embeddings = text_encoder(pos_input.input_ids)[0]
+    neg_embeddings = text_encoder(neg_input.input_ids)[0]
+    
+    # Calculate contrastive loss
+    # Push positive embeddings closer to image features while pushing negative embeddings away
+    image_features = images.mean(dim=[2, 3])  # Average pool spatial dimensions
+    image_features = image_features / image_features.norm(dim=-1, keepdim=True)  # Normalize
+    
+    pos_embeddings = pos_embeddings / pos_embeddings.norm(dim=-1, keepdim=True)
+    neg_embeddings = neg_embeddings / neg_embeddings.norm(dim=-1, keepdim=True)
+    
+    # Compute similarities
+    pos_similarity = (image_features * pos_embeddings).sum(dim=-1)
+    neg_similarity = (image_features * neg_embeddings).sum(dim=-1)
+    
+    # Contrastive loss with margin
+    margin = 0.2
+    loss = torch.relu(neg_similarity - pos_similarity + margin).mean()
+    
+    # Add L2 regularization to prevent embeddings from growing too large
+    l2_reg = 0.01 * (pos_embeddings.pow(2).sum() + neg_embeddings.pow(2).sum())
+    
+    total_loss = loss + l2_reg
+    return total_loss
 
 # Example usage
 if __name__ == "__main__":
