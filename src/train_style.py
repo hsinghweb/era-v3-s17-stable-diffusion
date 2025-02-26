@@ -10,6 +10,7 @@ from diffusers.optimization import get_scheduler
 from PIL import Image
 import numpy as np
 import glob
+import argparse
 
 def train_style(
     style_name,
@@ -91,43 +92,37 @@ def train_batch(text_encoder, images, placeholder_token, tokenizer):
 
 # Example usage
 if __name__ == "__main__":
-    styles_to_train = [
-        {
-            "name": "dhoni",
-            "images": ["training_images/dhoni/*.jpg", "training_images/dhoni/*.png"]
-        },
-        {
-            "name": "mickey_mouse",
-            "images": ["training_images/mickey_mouse/*.jpg", "training_images/mickey_mouse/*.png"]
-        },
-        {
-            "name": "balloon",
-            "images": ["training_images/balloon/*.jpg", "training_images/balloon/*.png"]
-        },
-        {
-            "name": "lion_king",
-            "images": ["training_images/lion_king/*.jpg", "training_images/lion_king/*.png"]
-        },
-        {
-            "name": "rose_flower",
-            "images": ["training_images/rose_flower/*.jpg", "training_images/rose_flower/*.png"]
-        }
-    ]
+    parser = argparse.ArgumentParser(description='Train a specific style for Stable Diffusion')
+    parser.add_argument('style_name', type=str, help='Name of the style to train (e.g., dhoni, mickey_mouse, balloon, lion_king, rose_flower)')
+    parser.add_argument('--steps', type=int, default=3000, help='Number of training steps')
+    parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
+    args = parser.parse_args()
     
-    for style in styles_to_train:
-        print(f"\nTraining {style['name']} style...")
-        # Combine all image paths from both jpg and png patterns
-        all_image_paths = []
-        for pattern in style["images"]:
-            all_image_paths.extend(glob.glob(pattern))
+    styles_to_train = {
+        "dhoni": ["training_images/dhoni/*.jpg", "training_images/dhoni/*.png"],
+        "mickey_mouse": ["training_images/mickey_mouse/*.jpg", "training_images/mickey_mouse/*.png"],
+        "balloon": ["training_images/balloon/*.jpg", "training_images/balloon/*.png"],
+        "lion_king": ["training_images/lion_king/*.jpg", "training_images/lion_king/*.png"],
+        "rose_flower": ["training_images/rose_flower/*.jpg", "training_images/rose_flower/*.png"]
+    }
+    
+    if args.style_name not in styles_to_train:
+        print(f"Error: Style '{args.style_name}' not found. Available styles: {', '.join(styles_to_train.keys())}")
+        exit(1)
+    
+    print(f"\nTraining {args.style_name} style...")
+    all_image_paths = []
+    for pattern in styles_to_train[args.style_name]:
+        all_image_paths.extend(glob.glob(pattern))
+    
+    if not all_image_paths:
+        print(f"Warning: No images found for {args.style_name} style")
+        exit(1)
         
-        if not all_image_paths:
-            print(f"Warning: No images found for {style['name']} style")
-            continue
-            
-        train_style(
-            style_name=style["name"],
-            image_paths=all_image_paths,
-            placeholder_token=f"<{style['name']}-style>",
-            num_training_steps=3000
-        )
+    train_style(
+        style_name=args.style_name,
+        image_paths=all_image_paths,
+        placeholder_token=f"<{args.style_name}-style>",
+        num_training_steps=args.steps,
+        learning_rate=args.lr
+    )
