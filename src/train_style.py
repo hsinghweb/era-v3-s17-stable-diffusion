@@ -108,11 +108,15 @@ def train_batch(text_encoder, images, placeholder_token, tokenizer):
     embedding_dim = pos_embeddings.shape[-1]  # Should be 768
     if not hasattr(text_encoder, 'image_projection'):
         text_encoder.image_projection = torch.nn.Linear(image_features.shape[-1], embedding_dim)
-        text_encoder.image_projection.to(image_features.device)
+        text_encoder.image_projection = text_encoder.image_projection.to(images.device)
     
     # Project and normalize image features
     image_features = text_encoder.image_projection(image_features)
     image_features = image_features / image_features.norm(dim=-1, keepdim=True)
+    
+    # Get mean embeddings for positive and negative prompts
+    pos_embeddings = pos_embeddings.mean(dim=1)  # Average across sequence length
+    neg_embeddings = neg_embeddings.mean(dim=1)  # Average across sequence length
     
     # Normalize text embeddings
     pos_embeddings = pos_embeddings / pos_embeddings.norm(dim=-1, keepdim=True)
