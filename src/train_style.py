@@ -94,31 +94,40 @@ if __name__ == "__main__":
     styles_to_train = [
         {
             "name": "dhoni",
-            "images": ["training_images/dhoni/*.jpg"]
+            "images": ["training_images/dhoni/*.jpg", "training_images/dhoni/*.png"]
         },
         {
             "name": "mickey_mouse",
-            "images": ["training_images/mickey_mouse/*.jpg"]
+            "images": ["training_images/mickey_mouse/*.jpg", "training_images/mickey_mouse/*.png"]
         },
         {
             "name": "balloon",
-            "images": ["training_images/balloon/*.jpg"]
+            "images": ["training_images/balloon/*.jpg", "training_images/balloon/*.png"]
         },
         {
             "name": "lion_king",
-            "images": ["training_images/lion_king/*.jpg"]
+            "images": ["training_images/lion_king/*.jpg", "training_images/lion_king/*.png"]
         },
         {
             "name": "rose_flower",
-            "images": ["training_images/rose_flower/*.jpg"]
+            "images": ["training_images/rose_flower/*.jpg", "training_images/rose_flower/*.png"]
         }
     ]
     
     for style in styles_to_train:
         print(f"\nTraining {style['name']} style...")
+        # Combine all image paths from both jpg and png patterns
+        all_image_paths = []
+        for pattern in style["images"]:
+            all_image_paths.extend(glob.glob(pattern))
+        
+        if not all_image_paths:
+            print(f"Warning: No images found for {style['name']} style")
+            continue
+            
         train_style(
             style_name=style["name"],
-            image_paths=glob.glob(style["images"][0]),
+            image_paths=all_image_paths,
             placeholder_token=f"<{style['name']}-style>",
             num_training_steps=3000
         )
